@@ -1,0 +1,11 @@
+import {compile} from 'svelte/compiler';
+import {build} from 'esbuild';
+import {readFileSync,writeFileSync} from 'node:fs';
+const compiled=compile(readFileSync('App.svelte','utf8'),{filename:'App.svelte',generate:'client',css:'injected'});
+for(const warning of compiled.warnings)console.log(warning.code,warning.message);
+writeFileSync('.component.js',compiled.js.code);
+const result=await build({stdin:{contents:"import App from './.component.js'; import {mount} from 'svelte'; mount(App,{target:document.getElementById('app')});",resolveDir:process.cwd()},bundle:true,write:false,format:'iife',minify:true,conditions:['browser'],platform:'browser'});
+const js=result.outputFiles[0].text.replace(/<\/script/gi,'<\\/script');
+const notices='<!--\n'+readFileSync('LICENSE','utf8')+'\n'+readFileSync('THIRD_PARTY.md','utf8').replaceAll('--','- -')+'\n-->\n';
+writeFileSync('solidframe.html',notices+`<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src blob: data:; connect-src 'none'; base-uri 'none'; form-action 'none'"><title>SolidFrame</title></head><body><div id="app"></div><script>${js}</script></body></html>`);
+console.log('Built offline solidframe.html',readFileSync('solidframe.html').length,'bytes');
